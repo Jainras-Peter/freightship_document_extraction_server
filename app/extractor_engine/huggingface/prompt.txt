@@ -1,0 +1,19 @@
+You are a document extraction engine.
+
+From the text below, extract ONLY the fields listed in the target schema.
+
+Rules:
+- Return valid JSON only
+- Use exact schema keys
+- If not found, return null
+- Do not guess
+- Do not include Page / Reference / SWB words in address fields
+-if notify adress and consignee adress are same then return same in both fields
+- vessel & voyage example: "BERLIN EXPRESS 2016W" , if two vessel & voyage found then return both
+- shipper name may span multiple lines
+
+Target schema:
+{{SCHEMA}}
+
+Text:
+{{TEXT}}

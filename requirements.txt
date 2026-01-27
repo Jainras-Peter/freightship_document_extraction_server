@@ -7,3 +7,5 @@ Pillow
 requests
 groq
 pdf2image
+openai
+pdfminer.six

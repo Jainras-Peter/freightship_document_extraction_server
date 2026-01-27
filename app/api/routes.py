@@ -30,30 +30,39 @@ async def extract_document(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
 
-    # 2. Preprocess (Get Images)
+    # 2. Preprocess & 3. OCR (Unified Logic)
     images = []
-    try:
-        if file_type == "pdf":
-            images = convert_pdf_to_images(contents)
-        else:
-            # Image
-            import io
-            image = Image.open(io.BytesIO(contents))
-            images = [image]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Preprocessing failed: {str(e)}")
-
-    if not images:
-         raise HTTPException(status_code=400, detail="No images could be processed from the file.")
-
-    # 3. OCR (Accumulate text from all pages)
     full_text = ""
+    ocr_engine = settings.OCR_ENGINE.lower()
+
     try:
-        for img in images:
-            text = perform_ocr(img)
-            full_text += text + "\n\n"
+        # Check if we should use Direct Text Extraction (Only for PDF + Configured)
+        if file_type == "pdf" and ocr_engine == "pdf_text":
+            from app.preprocess.pdf_text_extractor import extract_text_from_pdf
+            full_text = extract_text_from_pdf(contents)
+            
+            # NOTE: We skip image generation here as requested for performance.
+            # artifacts will only contain text and JSON.
+            
+        else:
+            # Fallback / Default: Image Conversion + OCR
+            if file_type == "pdf":
+                images = convert_pdf_to_images(contents)
+            else:
+                # Image file
+                import io
+                image = Image.open(io.BytesIO(contents))
+                images = [image]
+            
+            if not images:
+                 raise HTTPException(status_code=400, detail="No images could be processed from the file.")
+
+            for img in images:
+                text = perform_ocr(img)
+                full_text += text + "\n\n"
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"OCR failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
 
     # 4. Parse Schema
     try:
