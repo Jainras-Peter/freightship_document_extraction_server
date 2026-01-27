@@ -47,8 +47,10 @@ Before running the application, ensure you have the following installed:
 2.  Add your Groq API Key:
     ```env
     GROQ_API_KEY=gsk_your_actual_api_key_here
-    # Optional: Enable debug mode to save artifacts to /debug_output
-    GROQ_API_KEY=gsk_your_actual_api_key_here
+    HUGGINGFACE_API_KEY=hf_your_actual_api_key_here
+    EXTRACTION_ENGINE=groq or huggingface or ollama
+    OCR_ENGINE=tesseract or pdfminer
+   
     # Optional: Enable debug mode to save artifacts to /debug_output
     DEBUG=True
     # Optional: Ollama URL (Defaults to http://localhost:11434/api/generate)
