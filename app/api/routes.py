@@ -18,7 +18,7 @@ router = APIRouter()
 @router.post("/extract")
 async def extract_document(
     file: UploadFile = File(...),
-    schema: str = Form(...),
+    json_schema: str = Form(..., alias="schema"),
     debug: bool = Form(False)
 ):
     request_id = str(uuid.uuid4())
@@ -29,6 +29,37 @@ async def extract_document(
         contents = await file.read()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
+
+    # Parse Schema early for hashing
+    try:
+        schema_dict = json.loads(json_schema)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON schema provided.")
+
+    # Caching Logic
+    file_hash = None
+    schema_hash = None
+    
+    if settings.CACHE_ENABLED:
+        try:
+            from app.utils.hashing import compute_file_hash, compute_schema_hash
+            from app.services.cache_service import cache_service
+            import logging
+            
+            file_hash = compute_file_hash(contents)
+            schema_hash = compute_schema_hash(schema_dict)
+            
+            cached_result = await cache_service.get_cached_result(file_hash, schema_hash)
+            if cached_result:
+                logging.info(f"FROM CACHE: Request {request_id} served from DB.")
+                return cached_result['extracted_data']
+            else:
+                 logging.info(f"CACHE MISS: Request {request_id} proceeding to LLM / Processing.")
+        except Exception as e:
+            logging.error(f"Cache check failed: {e}")
+
+    # --- PROCESSING STARTS (Cache Miss or Disabled) ---
+    logging.info(f"FROM LLM: Request {request_id} being processed.")
 
     # 2. Preprocess & 3. OCR (Unified Logic)
     images = []
@@ -64,11 +95,8 @@ async def extract_document(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
 
-    # 4. Parse Schema
-    try:
-        schema_dict = json.loads(schema)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON schema provided.")
+    # 4. Parse Schema (Alredy done above)
+    # kept purely for flow if logic changes, but variable schema_dict is already available.
 
     # 5. Extraction
     try:
@@ -76,6 +104,16 @@ async def extract_document(
         result = extractor.extract(full_text, schema_dict)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+
+    # 5. Save to Cache
+    if settings.CACHE_ENABLED and file_hash and schema_hash:
+        try:
+             # Importing here to ensure visibility or rely on top imports if moved
+             from app.services.cache_service import cache_service
+             import logging
+             await cache_service.save_result(file_hash, schema_hash, result)
+        except Exception as e:
+             logging.error(f"Failed to save to cache: {e}")
 
     # 6. Debug / Save Artifacts
     # Use global setting OR request param

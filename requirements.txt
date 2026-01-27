@@ -9,3 +9,4 @@ groq
 pdf2image
 openai
 pdfminer.six
+motor
