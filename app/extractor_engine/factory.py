@@ -4,8 +4,8 @@ from .ollama.extractor import OllamaExtractor
 from .huggingface.extractor import HuggingFaceExtractor
 import os
 
-def get_extractor():
-    engine = settings.EXTRACTION_ENGINE.lower()
+def get_extractor(engine_name: str = None):
+    engine = (engine_name or settings.EXTRACTION_ENGINE).lower()
 
     if engine == "groq":
         return GroqExtractor()

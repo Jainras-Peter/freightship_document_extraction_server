@@ -4,11 +4,14 @@ from app.config import settings
 
 from app.core.database import db
 import logging
+import sys
 
 # Configure Logging to Console
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)],
+    force=True
 )
 
 from contextlib import asynccontextmanager

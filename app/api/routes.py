@@ -4,6 +4,7 @@ import json
 import shutil
 import os
 import uuid
+import logging
 from PIL import Image
 
 from app.controllers.input_validator import validate_file
@@ -13,12 +14,17 @@ from app.extractor_engine.factory import get_extractor
 from app.core.debug import save_debug_artifacts
 from app.config import settings
 
+# Initialize Logger
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 @router.post("/extract")
 async def extract_document(
     file: UploadFile = File(...),
     json_schema: str = Form(..., alias="schema"),
+    extraction_engine: str = Form("groq"),
+    ocr_engine: str = Form("tesseract"),
     debug: bool = Form(False)
 ):
     request_id = str(uuid.uuid4())
@@ -44,31 +50,31 @@ async def extract_document(
         try:
             from app.utils.hashing import compute_file_hash, compute_schema_hash
             from app.services.cache_service import cache_service
-            import logging
             
             file_hash = compute_file_hash(contents)
             schema_hash = compute_schema_hash(schema_dict)
             
             cached_result = await cache_service.get_cached_result(file_hash, schema_hash)
             if cached_result:
-                logging.info(f"FROM CACHE: Request {request_id} served from DB.")
+                logger.info(f"FROM CACHE: Request {request_id} served from DB.")
                 return cached_result['extracted_data']
             else:
-                 logging.info(f"CACHE MISS: Request {request_id} proceeding to LLM / Processing.")
+                 logger.info(f"CACHE MISS: Request {request_id} proceeding to LLM / Processing.")
         except Exception as e:
-            logging.error(f"Cache check failed: {e}")
+            logger.error(f"Cache check failed: {e}")
 
     # --- PROCESSING STARTS (Cache Miss or Disabled) ---
-    logging.info(f"FROM LLM: Request {request_id} being processed.")
+    logger.info(f"FROM LLM: Request {request_id} being processed using {extraction_engine} and {ocr_engine} - {file.filename}")
 
     # 2. Preprocess & 3. OCR (Unified Logic)
     images = []
     full_text = ""
-    ocr_engine = settings.OCR_ENGINE.lower()
+    # Use payload ocr_engine, default to settings if somehow empty or not provided (schema has default though)
+    selected_ocr_engine = ocr_engine.lower() if ocr_engine else settings.OCR_ENGINE.lower()
 
     try:
         # Check if we should use Direct Text Extraction (Only for PDF + Configured)
-        if file_type == "pdf" and ocr_engine == "pdf_text":
+        if file_type == "pdf" and selected_ocr_engine == "pdf_text":
             from app.preprocess.pdf_text_extractor import extract_text_from_pdf
             full_text = extract_text_from_pdf(contents)
             
@@ -100,7 +106,7 @@ async def extract_document(
 
     # 5. Extraction
     try:
-        extractor = get_extractor()
+        extractor = get_extractor(engine_name=extraction_engine)
         result = extractor.extract(full_text, schema_dict)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
@@ -110,10 +116,9 @@ async def extract_document(
         try:
              # Importing here to ensure visibility or rely on top imports if moved
              from app.services.cache_service import cache_service
-             import logging
              await cache_service.save_result(file_hash, schema_hash, result)
         except Exception as e:
-             logging.error(f"Failed to save to cache: {e}")
+             logger.error(f"Failed to save to cache: {e}")
 
     # 6. Debug / Save Artifacts
     # Use global setting OR request param
