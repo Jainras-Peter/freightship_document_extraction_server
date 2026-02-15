@@ -4,7 +4,7 @@ import logging
 
 class CacheService:
     def __init__(self):
-        self.collection_name = "extraction_cache"
+        self.collection_name = "Cache"
 
     async def get_cached_result(self, file_hash: str, schema_hash: str):
         """Retrieve result from cache if exists."""

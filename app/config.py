@@ -16,7 +16,7 @@ class Settings:
     
     # Database / Cache
     MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-    DB_NAME = os.getenv("DB_NAME", "document_extractor_cache")
+    DB_NAME = os.getenv("DB_NAME", "fs-extraction_server-db")
     CACHE_ENABLED = os.getenv("CACHE_ENABLED", "False").lower() == "true"
 
     #Debug
