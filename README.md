@@ -138,5 +138,116 @@ Document_Extracter/
 ├── debug_output/       # Generated artifacts (if debug=True)
 ├── .env                # Environment variables
 ├── .gitignore          # Git ignore rules
+├── Dockerfile          # Docker image definition
+├── .dockerignore       # Files excluded from Docker image
 └── requirements.txt    # Python dependencies
+```
+
+## 🐳 Run with Docker
+
+The easiest way to run this service on any machine — no need to install Python, Tesseract, or Poppler manually.
+
+### Prerequisites
+
+- [Docker](https://www.docker.com/products/docker-desktop) installed on your system.
+
+### Step 1 — Pull the Image
+
+```bash
+docker pull jainras/freightship-docextractor
+```
+
+### Step 2 — Create a `.env` File
+
+Create a file named `.env` in your working directory with the following variables:
+
+```env
+# ── Required ──────────────────────────────────────────
+GROQ_API_KEY=gsk_your_groq_api_key_here
+HUGGINGFACE_API_KEY=hf_your_huggingface_api_key_here
+MONGO_URI=mongodb+srv://your_mongo_connection_string
+DB_NAME=fs-extraction_server-db
+
+# ── Engine Selection ──────────────────────────────────
+EXTRACTION_ENGINE=groq          # Options: groq | huggingface | ollama
+OCR_ENGINE=tesseract            # Options: tesseract | pdfminer
+
+# ── Optional ──────────────────────────────────────────
+CACHE_ENABLED=true              # Enable MongoDB caching (true/false)
+DEBUG=false                     # Save debug artifacts (true/false)
+OLLAMA_URL=http://localhost:11434/api/generate   # Only if using ollama engine
+```
+
+> **Note:** The `.env` file is NOT baked into the Docker image for security. You must provide it at runtime.
+
+### Step 3 — Run the Container
+
+```bash
+docker run -d -p 10000:10000 --env-file .env --name doc-extractor jainras/freightship-docextractor
+```
+
+| Flag | Description |
+|---|---|
+| `-d` | Run in background (detached mode) |
+| `-p 10000:10000` | Map host port 10000 → container port 10000 |
+| `--env-file .env` | Load environment variables from the `.env` file |
+| `--name doc-extractor` | Assign a name to the container |
+
+### Step 4 — Verify It's Running
+
+Open your browser and visit:
+
+```
+http://localhost:10000/docs
+```
+
+Or check from the terminal:
+
+```bash
+docker ps
+```
+
+### Useful Docker Commands
+
+```bash
+# View logs
+docker logs doc-extractor
+
+# Follow logs in real-time
+docker logs -f doc-extractor
+
+# Stop the container
+docker stop doc-extractor
+
+# Restart the container
+docker start doc-extractor
+
+# Remove the container (must be stopped first)
+docker rm doc-extractor
+```
+
+### Updating the Image After Code Changes
+
+After making changes to the code, rebuild and push the updated image:
+
+```bash
+# 1. Rebuild the image
+docker build -t jainras/freightship-docextractor:latest .
+
+# 2. Push the updated image to Docker Hub
+docker push jainras/freightship-docextractor:latest
+```
+
+On the target machine, pull and restart with the latest version:
+
+```bash
+# 3. Pull the latest image
+docker pull jainras/freightship-docextractor:latest
+
+# 4. Stop and remove the old container
+docker stop doc-extractor
+docker rm doc-extractor
+
+# 5. Run the new version
+docker run -d -p 10000:10000 --env-file .env --name doc-extractor jainras/freightship-docextractor:latest
 ```
