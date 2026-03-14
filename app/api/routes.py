@@ -116,7 +116,21 @@ async def extract_document(
         try:
              # Importing here to ensure visibility or rely on top imports if moved
              from app.services.cache_service import cache_service
-             await cache_service.save_result(file_hash, schema_hash, result)
+             
+             # --- VALIDATION LOGIC ---
+             mbl_number = result.get("mbl_number")
+             carrier_name = result.get("carrier_name")
+             shipper_name = result.get("shipper_name")
+             vessel_name = result.get("vessel_name")
+             port_of_loading = result.get("port_of_loading")
+             
+             important_fields = [mbl_number, carrier_name, shipper_name, vessel_name, port_of_loading]
+             valid_fields_count = sum(1 for field in important_fields if field and str(field).strip())
+             
+             if not mbl_number or valid_fields_count < 3:
+                 logger.error("mbl details not found: Important fields are missing. Skipping cache.")
+             else:
+                 await cache_service.save_result(file_hash, schema_hash, result)
         except Exception as e:
              logger.error(f"Failed to save to cache: {e}")
 

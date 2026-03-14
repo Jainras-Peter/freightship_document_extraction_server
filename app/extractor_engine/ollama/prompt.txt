@@ -1,11 +1,11 @@
 You are a document extraction engine.
 
-From the Sea Waybill text below, extract ONLY the fields listed in the target schema.
+From the document text below, extract ONLY the fields listed in the target schema.
 
 Rules:
 - Return valid JSON only
 - Use the exact keys from the schema
-- If a value is not found, return null
+- If a value is NOT explicitly present in the text, you MUST return an empty string "" or null.
 - Do not infer or guess values
 - Preserve original values exactly
 -Dont add Pgae , reference ,swb-no words in address feilds
