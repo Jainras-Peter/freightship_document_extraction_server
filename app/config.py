@@ -19,6 +19,9 @@ class Settings:
     DB_NAME = os.getenv("DB_NAME", "fs-extraction_server-db")
     CACHE_ENABLED = os.getenv("CACHE_ENABLED", "False").lower() == "true"
 
+    # Debug
+    DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+
     # Server
     PORT = int(os.getenv("PORT", 10000))
 
