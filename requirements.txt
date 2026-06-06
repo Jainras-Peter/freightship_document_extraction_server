@@ -10,3 +10,9 @@ pdf2image
 openai
 pdfminer.six
 motor
+huggingface_hub
+faiss-cpu
+langchain-text-splitters
+numpy<2
+cohere
+groq

@@ -25,10 +25,22 @@ async def lifespan(app: FastAPI):
     # Shutdown
     db.close()
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="Document Extraction Service", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 app.include_router(router)
+from app.ai_agent.api.routes import router as ai_agent_router
+app.include_router(ai_agent_router)
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])
